@@ -85,6 +85,7 @@ type
     procedure DibujarEstacionActual;
     procedure EnviarDatosFlask(datos_trama: array of Integer);
     procedure DibujarFondoGrafico(ASender: TChart; ACanvas: TCanvas; const ARect: TRect);
+    procedure DibujarFondoHistograma(ASender: TChart; ACanvas: TCanvas; const ARect: TRect);
 
   public
 
@@ -93,9 +94,11 @@ type
 var
   FormPrincipal: TFormPrincipal;
 
-  // Imagen original y bitmap pre-renderizado en cache para cero consumo de CPU
+  // Imagenes y bitmaps pre-renderizados en cache para cero consumo de CPU
   imagen_fondo_grafico: TPicture;
   bitmap_fondo_cache: TBitmap;
+  imagen_fondo_histograma: TPicture;
+  bitmap_fondo_histo_cache: TBitmap;
 
   // Guardamos el historial por separado para cada una de las 5 estaciones UMA
   // Asi al cambiar de UMA 1 a UMA 2 y volver, no se borran los datos anteriores
@@ -137,6 +140,15 @@ begin
 
   // Solo asociamos el fondo al grafico de series (no a los paneles, para mantener 60 FPS)
   GraficoSeries.OnAfterDrawBackWall := @DibujarFondoGrafico;
+
+  // Cargamos la imagen del espacio exterior detras del histograma
+  imagen_fondo_histograma := TPicture.Create;
+  bitmap_fondo_histo_cache := TBitmap.Create;
+  if FileExists(carpeta_base + 'fondo_histograma.jpg') then
+    imagen_fondo_histograma.LoadFromFile(carpeta_base + 'fondo_histograma.jpg');
+
+  // Asociamos el fondo cosmico al histograma
+  GraficoHistograma.OnAfterDrawBackWall := @DibujarFondoHistograma;
 
   // Aseguramos que las casillas nazcan desmarcadas al abrir la ventana
   ChkConectarSerial.Checked := False;
@@ -210,6 +222,8 @@ begin
     PuertoSerial.Close;
   FreeAndNil(bitmap_fondo_cache);
   FreeAndNil(imagen_fondo_grafico);
+  FreeAndNil(bitmap_fondo_histo_cache);
+  FreeAndNil(imagen_fondo_histograma);
 end;
 
 // Dibuja el paisaje ambiental usando cache en memoria (0 ms de sobrecarga de CPU)
@@ -233,6 +247,28 @@ begin
   end;
 
   ACanvas.Draw(ARect.Left, ARect.Top, bitmap_fondo_cache);
+end;
+
+// Dibuja el fondo del espacio detras del histograma con tematica cosmica a las 3 AM
+procedure TFormPrincipal.DibujarFondoHistograma(ASender: TChart; ACanvas: TCanvas; const ARect: TRect);
+var
+  ancho, alto: Integer;
+begin
+  if not Assigned(imagen_fondo_histograma) or (imagen_fondo_histograma.Width = 0) then
+    Exit;
+
+  ancho := ARect.Right - ARect.Left;
+  alto := ARect.Bottom - ARect.Top;
+  if (ancho <= 0) or (alto <= 0) then
+    Exit;
+
+  if (bitmap_fondo_histo_cache.Width <> ancho) or (bitmap_fondo_histo_cache.Height <> alto) then
+  begin
+    bitmap_fondo_histo_cache.SetSize(ancho, alto);
+    bitmap_fondo_histo_cache.Canvas.StretchDraw(Rect(0, 0, ancho, alto), imagen_fondo_histograma.Graphic);
+  end;
+
+  ACanvas.Draw(ARect.Left, ARect.Top, bitmap_fondo_histo_cache);
 end;
 
 // Actualiza el reloj del sistema cada segundo en la barra inferior
