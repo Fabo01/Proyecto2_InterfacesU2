@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Monitoreo Ambiental - UMA DataLogger</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background-color: #0f172a;
+            color: #f1f5f9;
+            padding: 24px 16px;
+            line-height: 1.5;
+        }
+
+        .contenedor {
+            max-width: 1180px;
+            margin: 0 auto;
+        }
+
+        /* Encabezado */
+        header {
+            margin-bottom: 24px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid #334155;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .titulo-principal {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #f8fafc;
+        }
+
+        .subtitulo {
+            font-size: 0.9rem;
+            color: #94a3b8;
+            margin-top: 4px;
+        }
+
+        .contador-registros {
+            background-color: #1e293b;
+            border: 1px solid #334155;
+            padding: 8px 14px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            color: #38bdf8;
+            font-weight: 600;
+        }
+
+        /* Barra de navegacion y filtros */
+        .barra-herramientas {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 24px;
+            background-color: #1e293b;
+            padding: 12px 16px;
+            border-radius: 10px;
+            border: 1px solid #334155;
+        }
+
+        .grupo-botones {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .btn-filtro {
+            display: inline-block;
+            text-decoration: none;
+            padding: 8px 14px;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            color: #cbd5e1;
+            background-color: #0f172a;
+            border: 1px solid #334155;
+            transition: all 0.2s ease;
+        }
+
+        .btn-filtro:hover {
+            background-color: #334155;
+            color: #ffffff;
+        }
+
+        .btn-filtro.activo {
+            background-color: #2563eb;
+            color: #ffffff;
+            border-color: #3b82f6;
+            font-weight: 600;
+        }
+
+        .btn-actualizar {
+            cursor: pointer;
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: #ffffff;
+            background-color: #059669;
+            border: 1px solid #10b981;
+            transition: all 0.2s ease;
+        }
+
+        .btn-actualizar:hover {
+            background-color: #10b981;
+        }
+
+        /* Tarjetas de ultima medicion */
+        .seccion-tarjetas {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 14px;
+            margin-bottom: 24px;
+        }
+
+        .tarjeta {
+            background-color: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 10px;
+            padding: 14px 16px;
+            text-align: center;
+        }
+
+        .tarjeta-etiqueta {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: #94a3b8;
+            margin-bottom: 6px;
+        }
+
+        .tarjeta-valor {
+            font-size: 1.35rem;
+            font-weight: 700;
+            color: #f8fafc;
+        }
+
+        .tarjeta-unidad {
+            font-size: 0.75rem;
+            color: #64748b;
+            font-weight: 400;
+            margin-left: 2px;
+        }
+
+        .color-mp1 { color: #38bdf8; }
+        .color-mp25 { color: #34d399; }
+        .color-mp10 { color: #f87171; }
+        .color-temp { color: #fbbf24; }
+        .color-hum { color: #22d3ee; }
+
+        /* Contenedor del grafico */
+        .seccion-grafico {
+            background-color: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 10px;
+            padding: 18px;
+            margin-bottom: 24px;
+        }
+
+        .encabezado-grafico {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 14px;
+        }
+
+        .titulo-seccion {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #f8fafc;
+        }
+
+        .imagen-grafico-contenedor {
+            text-align: center;
+            background-color: #0f172a;
+            border-radius: 8px;
+            padding: 8px;
+            border: 1px solid #334155;
+        }
+
+        .imagen-grafico {
+            max-width: 100%;
+            height: auto;
+            border-radius: 6px;
+            display: block;
+            margin: 0 auto;
+        }
+
+        /* Consultas JSON */
+        .seccion-json {
+            background-color: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 10px;
+            padding: 18px;
+            margin-bottom: 24px;
+        }
+
+        .texto-ayuda {
+            font-size: 0.85rem;
+            color: #94a3b8;
+            margin-top: 4px;
+            margin-bottom: 14px;
+        }
+
+        .grid-json {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+            gap: 10px;
+        }
+
+        .link-json {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            text-decoration: none;
+            background-color: #0f172a;
+            border: 1px solid #334155;
+            padding: 10px 14px;
+            border-radius: 8px;
+            color: #cbd5e1;
+            font-size: 0.85rem;
+            transition: all 0.2s ease;
+        }
+
+        .link-json:hover {
+            border-color: #38bdf8;
+            background-color: #1e293b;
+            color: #38bdf8;
+        }
+
+        .metodo-get {
+            background-color: #0369a1;
+            color: #e0f2fe;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            font-weight: 700;
+        }
+
+        /* Pie de pagina */
+        footer {
+            text-align: center;
+            font-size: 0.8rem;
+            color: #64748b;
+            padding: 16px 0;
+            border-top: 1px solid #334155;
+        }
+    </style>
+</head>
+<body>
+    <div class="contenedor">
+        <!-- Encabezado con titulo e informacion general -->
+        <header>
+            <div>
+                <h1 class="titulo-principal">Estacion de Monitoreo Ambiental - UMA</h1>
+                <p class="subtitulo">Visualizacion con Flask, SQLite y Matplotlib (3 Subplots)</p>
+            </div>
+            <div class="contador-registros">
+                Total Registros: {{ total_registros }}
+            </div>
+        </header>
+
+        <!-- Barra con botones para filtrar por estacion y actualizar -->
+        <div class="barra-herramientas">
+            <div class="grupo-botones">
+                <a href="/" class="btn-filtro {% if uma_actual is none %}activo{% endif %}">Todas las UMA</a>
+                <a href="/?uma=1" class="btn-filtro {% if uma_actual == 1 %}activo{% endif %}">UMA 1</a>
+                <a href="/?uma=2" class="btn-filtro {% if uma_actual == 2 %}activo{% endif %}">UMA 2</a>
+                <a href="/?uma=3" class="btn-filtro {% if uma_actual == 3 %}activo{% endif %}">UMA 3</a>
+                <a href="/?uma=4" class="btn-filtro {% if uma_actual == 4 %}activo{% endif %}">UMA 4</a>
+                <a href="/?uma=5" class="btn-filtro {% if uma_actual == 5 %}activo{% endif %}">UMA 5</a>
+            </div>
+            <button class="btn-actualizar" onclick="window.location.reload();">Actualizar Datos</button>
+        </div>
+
+        <!-- Tarjetas mostrando la medicion mas reciente -->
+        {% if ultimo %}
+        <div class="seccion-tarjetas">
+            <div class="tarjeta">
+                <div class="tarjeta-etiqueta">Estacion</div>
+                <div class="tarjeta-valor">UMA {{ ultimo.id_uma }}</div>
+            </div>
+            <div class="tarjeta">
+                <div class="tarjeta-etiqueta">Hora Medicion</div>
+                <div class="tarjeta-valor" style="font-size: 1.1rem;">{{ ultimo.fecha_hora.split(" ")[-1] }}</div>
+            </div>
+            <div class="tarjeta">
+                <div class="tarjeta-etiqueta">MP 1.0</div>
+                <div class="tarjeta-valor color-mp1">{{ ultimo.mp1_0 }}<span class="tarjeta-unidad">ug/m3</span></div>
+            </div>
+            <div class="tarjeta">
+                <div class="tarjeta-etiqueta">MP 2.5</div>
+                <div class="tarjeta-valor color-mp25">{{ ultimo.mp2_5 }}<span class="tarjeta-unidad">ug/m3</span></div>
+            </div>
+            <div class="tarjeta">
+                <div class="tarjeta-etiqueta">MP 10</div>
+                <div class="tarjeta-valor color-mp10">{{ ultimo.mp10 }}<span class="tarjeta-unidad">ug/m3</span></div>
+            </div>
+            <div class="tarjeta">
+                <div class="tarjeta-etiqueta">Temperatura</div>
+                <div class="tarjeta-valor color-temp">{{ ultimo.temperatura }}<span class="tarjeta-unidad">°C</span></div>
+            </div>
+            <div class="tarjeta">
+                <div class="tarjeta-etiqueta">Humedad</div>
+                <div class="tarjeta-valor color-hum">{{ ultimo.humedad }}<span class="tarjeta-unidad">%</span></div>
+            </div>
+        </div>
+        {% else %}
+        <div class="tarjeta" style="margin-bottom: 24px; padding: 20px;">
+            <p style="color: #94a3b8;">Aun no hay mediciones registradas en la base de datos. Inicia el simulador serial para comenzar a recibir datos.</p>
+        </div>
+        {% endif %}
+
+        <!-- Recuadro central con la imagen generada por Matplotlib -->
+        <div class="seccion-grafico">
+            <div class="encabezado-grafico">
+                <h2 class="titulo-seccion">
+                    Grafica Ambiental Matplotlib
+                    {% if uma_actual %} - Filtrado por UMA {{ uma_actual }}{% endif %}
+                </h2>
+                <span style="font-size: 0.8rem; color: #94a3b8;">Ultimas 20 mediciones</span>
+            </div>
+            <div class="imagen-grafico-contenedor">
+                <img 
+                    src="/grafico.png{% if uma_actual %}?uma={{ uma_actual }}{% endif %}" 
+                    alt="Grafico de Monitoreo Ambiental" 
+                    class="imagen-grafico"
+                >
+            </div>
+        </div>
+
+        <!-- Seccion de consultas JSON directas en el navegador -->
+        <div class="seccion-json">
+            <h2 class="titulo-seccion">Consultas JSON en el Navegador (API REST)</h2>
+            <p class="texto-ayuda">Puedes abrir los siguientes enlaces directamente en una nueva pestana para revisar las respuestas JSON del servidor:</p>
+            <div class="grid-json">
+                <a href="/data" target="_blank" class="link-json">
+                    <span>Todas las mediciones (/data)</span>
+                    <span class="metodo-get">GET</span>
+                </a>
+                <a href="/data/ultimo" target="_blank" class="link-json">
+                    <span>Ultima medicion (/data/ultimo)</span>
+                    <span class="metodo-get">GET</span>
+                </a>
+                <a href="/data/uma/1" target="_blank" class="link-json">
+                    <span>Mediciones UMA 1 (/data/uma/1)</span>
+                    <span class="metodo-get">GET</span>
+                </a>
+                <a href="/data/uma/2" target="_blank" class="link-json">
+                    <span>Mediciones UMA 2 (/data/uma/2)</span>
+                    <span class="metodo-get">GET</span>
+                </a>
+                <a href="/data/uma/3" target="_blank" class="link-json">
+                    <span>Mediciones UMA 3 (/data/uma/3)</span>
+                    <span class="metodo-get">GET</span>
+                </a>
+                <a href="/data/uma/4" target="_blank" class="link-json">
+                    <span>Mediciones UMA 4 (/data/uma/4)</span>
+                    <span class="metodo-get">GET</span>
+                </a>
+                <a href="/data/uma/5" target="_blank" class="link-json">
+                    <span>Mediciones UMA 5 (/data/uma/5)</span>
+                    <span class="metodo-get">GET</span>
+                </a>
+            </div>
+        </div>
+
+        <!-- Pie de pagina -->
+        <footer>
+            Interfaces Graficas (INFO1128) - Proyecto #2 Unidad II - Universidad Catolica de Temuco
+        </footer>
+    </div>
+</body>
+</html>

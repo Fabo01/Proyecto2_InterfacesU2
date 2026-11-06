@@ -1,0 +1,668 @@
+object FormPrincipal: TFormPrincipal
+  Left = 240
+  Height = 620
+  Top = 150
+  Width = 1220
+  Caption = 'Data Logger - Monitoreo Ambiental'
+  ClientHeight = 620
+  ClientWidth = 1220
+  Color = 15130328
+  Font.CharSet = ANSI_CHARSET
+  Font.Height = -12
+  Font.Name = 'Segoe UI'
+  Font.Pitch = fpVariable
+  Font.Quality = fqDraft
+  Position = poScreenCenter
+  LCLVersion = '4.8.0.0'
+  OnClose = FormClose
+  OnCreate = FormCreate
+  object PanelSuperior: TPanel
+    Left = 0
+    Height = 58
+    Top = 0
+    Width = 1220
+    Align = alTop
+    BevelOuter = bvLowered
+    ClientHeight = 58
+    ClientWidth = 1220
+    Color = 14404282
+    ParentBackground = False
+    ParentColor = False
+    TabOrder = 0
+    object ChkConectarSerial: TCheckBox
+      Left = 18
+      Height = 24
+      Top = 18
+      Width = 110
+      Caption = 'COM On/Off'
+      Checked = False
+      Font.CharSet = ANSI_CHARSET
+      Font.Color = 3351068
+      Font.Height = -13
+      Font.Name = 'Segoe UI'
+      Font.Pitch = fpVariable
+      Font.Quality = fqDraft
+      Font.Style = [fsBold]
+      ParentFont = False
+      State = cbUnchecked
+      TabOrder = 0
+      OnChange = ChkConectarSerialChange
+    end
+    object GrupoUma: TGroupBox
+      Left = 150
+      Height = 46
+      Top = 5
+      Width = 490
+      Caption = ' [ Sensores OnLine - Estación UMA ] '
+      ClientHeight = 26
+      ClientWidth = 486
+      Color = 15591398
+      Font.CharSet = ANSI_CHARSET
+      Font.Color = 4206868
+      Font.Height = -11
+      Font.Name = 'Segoe UI'
+      Font.Pitch = fpVariable
+      Font.Quality = fqDraft
+      Font.Style = [fsBold]
+      ParentBackground = False
+      ParentColor = False
+      ParentFont = False
+      TabOrder = 1
+      object RbUma1: TRadioButton
+        Tag = 1
+        Left = 16
+        Height = 19
+        Top = 3
+        Width = 62
+        Caption = 'UMA 1'
+        Checked = True
+        Font.CharSet = ANSI_CHARSET
+        Font.Color = clBlack
+        Font.Height = -11
+        Font.Name = 'Segoe UI'
+        Font.Pitch = fpVariable
+        Font.Quality = fqDraft
+        Font.Style = [fsBold]
+        ParentFont = False
+        TabOrder = 0
+        TabStop = True
+        OnClick = CambiarEstacionUma
+      end
+      object RbUma2: TRadioButton
+        Tag = 2
+        Left = 112
+        Height = 19
+        Top = 3
+        Width = 62
+        Caption = 'UMA 2'
+        Font.CharSet = ANSI_CHARSET
+        Font.Color = clBlack
+        Font.Height = -11
+        Font.Name = 'Segoe UI'
+        Font.Pitch = fpVariable
+        Font.Quality = fqDraft
+        Font.Style = [fsBold]
+        ParentFont = False
+        TabOrder = 1
+        OnClick = CambiarEstacionUma
+      end
+      object RbUma3: TRadioButton
+        Tag = 3
+        Left = 208
+        Height = 19
+        Top = 3
+        Width = 62
+        Caption = 'UMA 3'
+        Font.CharSet = ANSI_CHARSET
+        Font.Color = clBlack
+        Font.Height = -11
+        Font.Name = 'Segoe UI'
+        Font.Pitch = fpVariable
+        Font.Quality = fqDraft
+        Font.Style = [fsBold]
+        ParentFont = False
+        TabOrder = 2
+        OnClick = CambiarEstacionUma
+      end
+      object RbUma4: TRadioButton
+        Tag = 4
+        Left = 304
+        Height = 19
+        Top = 3
+        Width = 62
+        Caption = 'UMA 4'
+        Font.CharSet = ANSI_CHARSET
+        Font.Color = clBlack
+        Font.Height = -11
+        Font.Name = 'Segoe UI'
+        Font.Pitch = fpVariable
+        Font.Quality = fqDraft
+        Font.Style = [fsBold]
+        ParentFont = False
+        TabOrder = 3
+        OnClick = CambiarEstacionUma
+      end
+      object RbUma5: TRadioButton
+        Tag = 5
+        Left = 400
+        Height = 19
+        Top = 3
+        Width = 62
+        Caption = 'UMA 5'
+        Font.CharSet = ANSI_CHARSET
+        Font.Color = clBlack
+        Font.Height = -11
+        Font.Name = 'Segoe UI'
+        Font.Pitch = fpVariable
+        Font.Quality = fqDraft
+        Font.Style = [fsBold]
+        ParentFont = False
+        TabOrder = 4
+        OnClick = CambiarEstacionUma
+      end
+    end
+    object ChkEnviarFlask: TCheckBox
+      Left = 665
+      Height = 24
+      Top = 18
+      Width = 130
+      Caption = 'Envía a Flask'
+      Checked = False
+      Font.CharSet = ANSI_CHARSET
+      Font.Color = clNavy
+      Font.Height = -13
+      Font.Name = 'Segoe UI'
+      Font.Pitch = fpVariable
+      Font.Quality = fqDraft
+      Font.Style = [fsBold]
+      ParentFont = False
+      State = cbUnchecked
+      TabOrder = 2
+    end
+  end
+  object PanelIzquierdo: TPanel
+    Left = 0
+    Height = 539
+    Top = 58
+    Width = 165
+    Align = alLeft
+    BevelOuter = bvNone
+    ClientHeight = 539
+    ClientWidth = 165
+    Color = 14404282
+    ParentBackground = False
+    ParentColor = False
+    TabOrder = 1
+    object GrupoTemperatura: TGroupBox
+      Left = 8
+      Height = 105
+      Top = 8
+      Width = 149
+      Align = alTop
+      BorderSpacing.Around = 8
+      Caption = ' Temp (°C) '
+      ClientHeight = 85
+      ClientWidth = 145
+      Color = clWhite
+      Font.CharSet = ANSI_CHARSET
+      Font.Color = 2631720
+      Font.Height = -13
+      Font.Name = 'Segoe UI'
+      Font.Pitch = fpVariable
+      Font.Quality = fqDraft
+      Font.Style = [fsBold]
+      ParentBackground = False
+      ParentColor = False
+      ParentFont = False
+      TabOrder = 0
+      object LblTemperatura: TLabel
+        Left = 0
+        Height = 85
+        Top = 0
+        Width = 145
+        Align = alClient
+        Alignment = taCenter
+        Caption = '0'
+        Color = clWhite
+        Font.CharSet = ANSI_CHARSET
+        Font.Color = 1776616
+        Font.Height = -42
+        Font.Name = 'Segoe UI'
+        Font.Pitch = fpVariable
+        Font.Quality = fqDraft
+        Font.Style = [fsBold]
+        Layout = tlCenter
+        ParentColor = False
+        ParentFont = False
+        Transparent = False
+      end
+    end
+    object GrupoHumedad: TGroupBox
+      Left = 8
+      Height = 105
+      Top = 121
+      Width = 149
+      Align = alTop
+      BorderSpacing.Around = 8
+      Caption = ' Hu Re (%) '
+      ClientHeight = 85
+      ClientWidth = 145
+      Color = clWhite
+      Font.CharSet = ANSI_CHARSET
+      Font.Color = 2631720
+      Font.Height = -13
+      Font.Name = 'Segoe UI'
+      Font.Pitch = fpVariable
+      Font.Quality = fqDraft
+      Font.Style = [fsBold]
+      ParentBackground = False
+      ParentColor = False
+      ParentFont = False
+      TabOrder = 1
+      object LblHumedad: TLabel
+        Left = 0
+        Height = 85
+        Top = 0
+        Width = 145
+        Align = alClient
+        Alignment = taCenter
+        Caption = '0'
+        Color = clWhite
+        Font.CharSet = ANSI_CHARSET
+        Font.Color = 13382400
+        Font.Height = -42
+        Font.Name = 'Segoe UI'
+        Font.Pitch = fpVariable
+        Font.Quality = fqDraft
+        Font.Style = [fsBold]
+        Layout = tlCenter
+        ParentColor = False
+        ParentFont = False
+        Transparent = False
+      end
+    end
+    object GrupoAcciones: TGroupBox
+      Left = 8
+      Height = 297
+      Top = 234
+      Width = 149
+      Align = alClient
+      BorderSpacing.Around = 8
+      Caption = ' Controles '
+      ClientHeight = 277
+      ClientWidth = 145
+      Color = 15591398
+      Font.CharSet = ANSI_CHARSET
+      Font.Color = 4206868
+      Font.Height = -11
+      Font.Name = 'Segoe UI'
+      Font.Pitch = fpVariable
+      Font.Quality = fqDraft
+      Font.Style = [fsBold]
+      ParentBackground = False
+      ParentColor = False
+      ParentFont = False
+      TabOrder = 2
+      object BtnGuardarSeries: TBitBtn
+        Left = 8
+        Height = 36
+        Top = 14
+        Width = 129
+        Caption = 'Guardar Series'
+        Font.CharSet = ANSI_CHARSET
+        Font.Height = -11
+        Font.Name = 'Segoe UI'
+        Font.Pitch = fpVariable
+        Font.Quality = fqDraft
+        Font.Style = [fsBold]
+        ParentFont = False
+        TabOrder = 0
+        OnClick = BtnGuardarSeriesClick
+      end
+      object BtnGuardarHisto: TBitBtn
+        Left = 8
+        Height = 36
+        Top = 60
+        Width = 129
+        Caption = 'Guardar Histo'
+        Font.CharSet = ANSI_CHARSET
+        Font.Height = -11
+        Font.Name = 'Segoe UI'
+        Font.Pitch = fpVariable
+        Font.Quality = fqDraft
+        Font.Style = [fsBold]
+        ParentFont = False
+        TabOrder = 1
+        OnClick = BtnGuardarHistoClick
+      end
+      object BtnLimpiar: TBitBtn
+        Left = 8
+        Height = 36
+        Top = 106
+        Width = 129
+        Caption = 'Limpiar Gráficos'
+        Font.CharSet = ANSI_CHARSET
+        Font.Height = -11
+        Font.Name = 'Segoe UI'
+        Font.Pitch = fpVariable
+        Font.Quality = fqDraft
+        Font.Style = [fsBold]
+        ParentFont = False
+        TabOrder = 2
+        OnClick = BtnLimpiarClick
+      end
+      object BtnSalir: TBitBtn
+        Left = 8
+        Height = 36
+        Top = 152
+        Width = 129
+        Caption = 'Salir'
+        Font.CharSet = ANSI_CHARSET
+        Font.Height = -11
+        Font.Name = 'Segoe UI'
+        Font.Pitch = fpVariable
+        Font.Quality = fqDraft
+        Font.Style = [fsBold]
+        ParentFont = False
+        TabOrder = 3
+        OnClick = BtnSalirClick
+      end
+    end
+  end
+  object PanelGraficos: TPanel
+    Left = 165
+    Height = 539
+    Top = 58
+    Width = 1055
+    Align = alClient
+    BevelOuter = bvNone
+    ClientHeight = 539
+    ClientWidth = 1055
+    Color = 15130328
+    ParentBackground = False
+    ParentColor = False
+    TabOrder = 2
+    object PanelSeries: TPanel
+      Left = 0
+      Height = 539
+      Top = 0
+      Width = 575
+      Align = alLeft
+      BevelOuter = bvNone
+      ClientHeight = 539
+      ClientWidth = 575
+      Color = 15130328
+      ParentBackground = False
+      ParentColor = False
+      TabOrder = 0
+      object PanelControlesSeries: TPanel
+        Left = 0
+        Height = 46
+        Top = 0
+        Width = 575
+        Align = alTop
+        BevelOuter = bvNone
+        ClientHeight = 46
+        ClientWidth = 575
+        Color = 15130328
+        ParentBackground = False
+        ParentColor = False
+        TabOrder = 0
+        object GrupoEtiquetasMP: TGroupBox
+          Left = 6
+          Height = 40
+          Top = 2
+          Width = 563
+          Align = alClient
+          BorderSpacing.Left = 6
+          BorderSpacing.Top = 2
+          BorderSpacing.Right = 6
+          BorderSpacing.Bottom = 4
+          Caption = ' Etiquetas de Valores en Curva '
+          ClientHeight = 20
+          ClientWidth = 559
+          Color = 15591398
+          Font.CharSet = ANSI_CHARSET
+          Font.Color = 4206868
+          Font.Height = -11
+          Font.Name = 'Segoe UI'
+          Font.Pitch = fpVariable
+          Font.Quality = fqDraft
+          Font.Style = [fsBold]
+          ParentBackground = False
+          ParentColor = False
+          ParentFont = False
+          TabOrder = 0
+          object RbVerMP1: TRadioButton
+            Left = 40
+            Height = 19
+            Top = 0
+            Width = 65
+            Caption = 'MP 01'
+            Checked = True
+            Font.CharSet = ANSI_CHARSET
+            Font.Color = clBlue
+            Font.Height = -11
+            Font.Name = 'Segoe UI'
+            Font.Pitch = fpVariable
+            Font.Quality = fqDraft
+            Font.Style = [fsBold]
+            ParentFont = False
+            TabOrder = 0
+            TabStop = True
+            OnClick = CambiarEtiquetasMP
+          end
+          object RbVerMP25: TRadioButton
+            Left = 180
+            Height = 19
+            Top = 0
+            Width = 65
+            Caption = 'MP 25'
+            Font.CharSet = ANSI_CHARSET
+            Font.Color = clGreen
+            Font.Height = -11
+            Font.Name = 'Segoe UI'
+            Font.Pitch = fpVariable
+            Font.Quality = fqDraft
+            Font.Style = [fsBold]
+            ParentFont = False
+            TabOrder = 1
+            OnClick = CambiarEtiquetasMP
+          end
+          object RbVerMP10: TRadioButton
+            Left = 320
+            Height = 19
+            Top = 0
+            Width = 65
+            Caption = 'MP 10'
+            Font.CharSet = ANSI_CHARSET
+            Font.Color = clRed
+            Font.Height = -11
+            Font.Name = 'Segoe UI'
+            Font.Pitch = fpVariable
+            Font.Quality = fqDraft
+            Font.Style = [fsBold]
+            ParentFont = False
+            TabOrder = 2
+            OnClick = CambiarEtiquetasMP
+          end
+        end
+      end
+      object GraficoSeries: TChart
+        Left = 6
+        Height = 485
+        Top = 46
+        Width = 563
+        AxisList = <        
+          item
+            Marks.LabelBrush.Style = bsClear
+            Minors = <>
+            Title.LabelFont.Orientation = 900
+            Title.LabelFont.Style = [fsBold]
+            Title.LabelBrush.Style = bsClear
+            Title.Caption = 'ug/m3'
+            Title.Visible = True
+          end        
+          item
+            Alignment = calBottom
+            Marks.LabelBrush.Style = bsClear
+            Minors = <>
+            Title.LabelFont.Style = [fsBold]
+            Title.LabelBrush.Style = bsClear
+            Title.Caption = 'Muestras (0 a 10)'
+            Title.Visible = True
+          end>
+        BackColor = 16443080
+        Title.Brush.Color = 14998740
+        Title.Font.Color = clNavy
+        Title.Font.Height = -13
+        Title.Font.Style = [fsBold]
+        Title.Text.Strings = (
+          'Datos Ambientales'
+        )
+        Title.Visible = True
+        Align = alClient
+        BorderSpacing.Left = 6
+        BorderSpacing.Right = 6
+        BorderSpacing.Bottom = 8
+        Color = 14998740
+        DoubleBuffered = True
+        object SerieMP1: TLineSeries
+          Title = 'MP 1.0'
+          LinePen.Color = clBlue
+          LinePen.Width = 2
+          Marks.Format = '%0:.0f'
+          Marks.Style = smsValue
+          Marks.Visible = False
+          Pointer.Brush.Color = clBlue
+          Pointer.Pen.Color = clBlue
+          Pointer.Style = psCircle
+          Pointer.Visible = True
+          ShowPoints = True
+        end
+        object SerieMP25: TLineSeries
+          Title = 'MP 2.5'
+          LinePen.Color = clGreen
+          LinePen.Width = 2
+          Marks.Format = '%0:.0f'
+          Marks.Style = smsValue
+          Marks.Visible = False
+          Pointer.Brush.Color = clGreen
+          Pointer.Pen.Color = clGreen
+          Pointer.Style = psRectangle
+          Pointer.Visible = True
+          ShowPoints = True
+        end
+        object SerieMP10: TLineSeries
+          Title = 'MP 10'
+          LinePen.Color = clRed
+          LinePen.Width = 2
+          Marks.Format = '%0:.0f'
+          Marks.Style = smsValue
+          Marks.Visible = False
+          Pointer.Brush.Color = clRed
+          Pointer.Pen.Color = clRed
+          Pointer.Style = psTriangle
+          Pointer.Visible = True
+          ShowPoints = True
+        end
+      end
+    end
+    object PanelHisto: TPanel
+      Left = 575
+      Height = 539
+      Top = 0
+      Width = 480
+      Align = alClient
+      BevelOuter = bvNone
+      ClientHeight = 539
+      ClientWidth = 480
+      Color = 15130328
+      ParentBackground = False
+      ParentColor = False
+      TabOrder = 1
+      object GraficoHistograma: TChart
+        Left = 6
+        Height = 525
+        Top = 6
+        Width = 468
+        AxisList = <        
+          item
+            Marks.LabelBrush.Style = bsClear
+            Minors = <>
+            Title.LabelFont.Orientation = 900
+            Title.LabelFont.Style = [fsBold]
+            Title.LabelBrush.Style = bsClear
+            Title.Caption = 'Conteo Partículas'
+            Title.Visible = True
+          end        
+          item
+            Alignment = calBottom
+            Marks.LabelBrush.Style = bsClear
+            Minors = <>
+            Title.LabelFont.Style = [fsBold]
+            Title.LabelBrush.Style = bsClear
+            Title.Caption = 'Diámetro (0.3um a 10um)'
+            Title.Visible = True
+          end>
+        BackColor = 16443080
+        Title.Brush.Color = 14998740
+        Title.Font.Color = clNavy
+        Title.Font.Height = -13
+        Title.Font.Style = [fsBold]
+        Title.Text.Strings = (
+          'Histograma MP'
+        )
+        Title.Visible = True
+        Align = alClient
+        BorderSpacing.Left = 6
+        BorderSpacing.Top = 6
+        BorderSpacing.Right = 6
+        BorderSpacing.Bottom = 8
+        Color = 14998740
+        DoubleBuffered = True
+        object SerieBarras: TBarSeries
+          Title = 'Partículas'
+          BarBrush.Color = clSkyBlue
+          BarWidthPercent = 65
+          Marks.Format = '%0:.0f'
+          Marks.Style = smsValue
+          Marks.Visible = False
+        end
+      end
+    end
+  end
+  object BarraEstado: TStatusBar
+    Left = 0
+    Height = 23
+    Top = 597
+    Width = 1220
+    Panels = <    
+      item
+        Width = 260
+      end    
+      item
+        Width = 940
+      end>
+    SimplePanel = False
+  end
+  object PuertoSerial: TLazSerial
+    Active = False
+    BaudRate = br__9600
+    DataBits = db8bits
+    Parity = pNone
+    FlowControl = fcNone
+    StopBits = sbOne
+    Device = 'COM2'
+    RcvLineCRLF = True
+    OnRxData = PuertoSerialRxData
+    Left = 32
+    Top = 520
+  end
+  object RelojTimer: TTimer
+    Interval = 1000
+    OnTimer = RelojTimerTimer
+    Left = 96
+    Top = 520
+  end
+end

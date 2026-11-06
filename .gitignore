@@ -1,0 +1,26 @@
+# Archivos temporales de Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+env/
+
+# Base de datos SQLite e imagen generada en ejecucion (se crean solas al correr el servidor)
+1_servidor_flask/*.db
+1_servidor_flask/*.db-wal
+1_servidor_flask/*.db-shm
+1_servidor_flask/static/grafico.png
+
+# Archivos temporales de compilacion de Lazarus (para evitar conflictos de rutas entre PC y Notebook)
+3_lazarus_datalogger/lib/
+3_lazarus_datalogger/backup/
+3_lazarus_datalogger/*.exe
+3_lazarus_datalogger/*.o
+3_lazarus_datalogger/*.ppu
+3_lazarus_datalogger/*.or
+3_lazarus_datalogger/*.compiled
+3_lazarus_datalogger/*.res
+3_lazarus_datalogger/*.lps
+3_lazarus_datalogger/capturas/*.png
+3_lazarus_datalogger/capturas/*.bmp

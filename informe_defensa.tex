@@ -1,0 +1,225 @@
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[spanish,es-tabla]{babel}
+\usepackage[margin=2.3cm]{geometry}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usepackage{enumitem}
+
+\definecolor{azuluct}{RGB}{20, 65, 130}
+\definecolor{grisoscuro}{RGB}{50, 60, 70}
+
+\hypersetup{
+    colorlinks=true,
+    linkcolor=azuluct,
+    urlcolor=azuluct,
+    pdftitle={Guia de Estudio y Defensa - Proyecto 2 Interfaces Graficas},
+    pdfauthor={Fabian Garcia}
+}
+
+\setlength{\parskip}{0.5em}
+\setlength{\parindent}{0pt}
+
+\title{\textbf{\textcolor{azuluct}{Guía de Arquitectura, Flujos y Defensa}}\\
+\Large Proyecto \#2 (Unidad II) --- DataLogger Ambiental con Lazarus, Flask, SQLite y Matplotlib\\
+\normalsize Interfaces Gráficas (INFO1128) --- Universidad Católica de Temuco}
+\author{Fabián García}
+\date{Noviembre 2026}
+
+\begin{document}
+
+\maketitle
+\tableofcontents
+\vspace{1em}
+\hrule
+\vspace{1em}
+
+\section{Visión General: ¿Cómo funciona todo el proyecto de punta a punta?}
+
+El proyecto simula una red de \textbf{5 Estaciones de Monitoreo Ambiental (UMA 1 a UMA 5)} que miden contaminación por material particulado ($\text{PM}_{1.0}$, $\text{PM}_{2.5}$ y $\text{PM}_{10}$), conteo de partículas en 6 tamaños ($0.3\,\mu\text{m}$ a $10\,\mu\text{m}$), temperatura y humedad relativa.
+
+El flujo completo de los datos atraviesa \textbf{4 componentes} conectados en serie:
+
+\begin{enumerate}[leftmargin=1.5em]
+    \item \textbf{Simulador Serial en Python (\texttt{2\_simulador\_serial/simulador\_serial.py}):}
+    Actúa como los sensores físicos. En un ciclo continuo va rotando entre las estaciones \texttt{UMA 1} a \texttt{UMA 5}, genera una trama de texto con \textbf{12 números enteros separados por comas} y la escribe en el puerto serial \texttt{COM2} a \texttt{9600} baudios.
+    
+    \item \textbf{Puerto Serial Virtual en VSPE (\texttt{Connector} en \texttt{COM2}):}
+    En Windows, un puerto serial físico normal solo puede ser abierto por un programa a la vez. El dispositivo tipo \textbf{\texttt{Connector}} de VSPE crea un puente virtual en \texttt{COM2} que permite que Python (transmisor) y Lazarus (receptor) estén conectados al mismo puerto \texttt{COM2} simultáneamente.
+    
+    \item \textbf{Interfaz Gráfica DataLogger en Lazarus Pascal (\texttt{3\_lazarus\_datalogger/main.pas}):}
+    Escucha el puerto \texttt{COM2} mediante el componente \texttt{TLazSerial} (\texttt{PuertoSerial}). Cada vez que entra una línea por el puerto:
+    \begin{itemize}
+        \item Separa los 12 números por las comas y actualiza la memoria de esa estación UMA.
+        \item Si la trama corresponde a la UMA seleccionada en los \texttt{RadioButtons}, actualiza los gráficos en tiempo real (\textbf{Scrolling Left} en el gráfico de líneas y las 6 barras en el histograma) junto con la Temperatura y Humedad.
+        \item Si la casilla \textbf{\texttt{Envía a Flask}} está marcada, empaqueta los 12 datos en un objeto \textbf{JSON} y los envía mediante una petición \textbf{HTTP POST} a \texttt{http://127.0.0.1:7070/data}.
+    \end{itemize}
+    
+    \item \textbf{Servidor Web Flask + SQLite + Matplotlib (\texttt{1\_servidor\_flask/servidor.py}):}
+    Corre en el puerto \texttt{7070}. Cumple tres tareas centrales:
+    \begin{itemize}
+        \item \textbf{Ingesta y Base de Datos SQLite (\texttt{POST /data}):} Recibe el JSON enviado por Lazarus, calcula la fecha y hora exacta (\texttt{DateTime}) y guarda el registro en la tabla \texttt{mediciones} del archivo \texttt{datos\_ambientales.db}.
+        \item \textbf{API REST en formato JSON (\texttt{GET /data}, \texttt{/data/ultimo}, \texttt{/data/uma/<id>}):} Permite consultar desde el navegador los registros guardados en SQLite directamente en formato JSON.
+        \item \textbf{Gráfica Matplotlib (\texttt{GET /grafico.png} y \texttt{GET /}):} Consulta las últimas 20 mediciones en SQLite y genera con \textbf{Matplotlib} una figura con \textbf{3 Subplots} (evolución de MP, histograma de 6 diámetros y evolución de Temperatura/Humedad), mostrándola en el panel web (\texttt{templates/index.html}).
+    \end{itemize}
+\end{enumerate}
+
+\section{Contrato de Datos: La Trama de 12 Valores}
+
+Tanto el simulador serial, como Lazarus, el JSON de envío y la tabla de SQLite manejan exactamente los mismos \textbf{12 datos enteros} en el mismo orden.
+
+Por ejemplo, ante la trama:
+\begin{center}
+\texttt{4, 62, 48, 71, 5593, 1398, 9349, 1868, 5142, 6684, 18, 45}
+\end{center}
+
+\begin{table}[h!]
+\centering
+\small
+\begin{tabular}{@{}clllc@{}}
+\toprule
+\textbf{Posición} & \textbf{Nombre en Código / JSON} & \textbf{Qué representa físicamente} & \textbf{Dónde se muestra en Lazarus} & \textbf{Rango} \\ \midrule
+\texttt{0} & \texttt{id\_uma} & Estación Ambiental (UMA 1 a 5) & Filtro \texttt{RbUma1..RbUma5} & $1 \dots 5$ \\
+\texttt{1} & \texttt{mp1\_0} & Material Particulado PM 1.0 ($\mu\text{g/m}^3$) & Curva azul (\texttt{SerieMP1}) & $5 \dots 100$ \\
+\texttt{2} & \texttt{mp2\_5} & Material Particulado PM 2.5 ($\mu\text{g/m}^3$) & Curva verde (\texttt{SerieMP25}) & $5 \dots 100$ \\
+\texttt{3} & \texttt{mp10} & Material Particulado PM 10 ($\mu\text{g/m}^3$) & Curva roja (\texttt{SerieMP10}) & $5 \dots 100$ \\
+\texttt{4} & \texttt{part\_03} & Conteo partículas de $0.3\,\mu\text{m}$ & Barra 0 del Histograma & $10 \dots 10000$ \\
+\texttt{5} & \texttt{part\_05} & Conteo partículas de $0.5\,\mu\text{m}$ & Barra 1 del Histograma & $10 \dots 10000$ \\
+\texttt{6} & \texttt{part\_10} & Conteo partículas de $1.0\,\mu\text{m}$ & Barra 2 del Histograma & $10 \dots 10000$ \\
+\texttt{7} & \texttt{part\_25} & Conteo partículas de $2.5\,\mu\text{m}$ & Barra 3 del Histograma & $10 \dots 10000$ \\
+\texttt{8} & \texttt{part\_50} & Conteo partículas de $5.0\,\mu\text{m}$ & Barra 4 del Histograma & $10 \dots 10000$ \\
+\texttt{9} & \texttt{part\_100} & Conteo partículas de $10.0\,\mu\text{m}$ & Barra 5 del Histograma & $10 \dots 10000$ \\
+\texttt{10} & \texttt{temperatura} & Temperatura ambiente ($^\circ\text{C}$) & Cuadro \texttt{LblTemperatura} & $5 \dots 30$ \\
+\texttt{11} & \texttt{humedad} & Humedad relativa del aire ($\%$) & Cuadro \texttt{LblHumedad} & $20 \dots 70$ \\ \bottomrule
+\end{tabular}
+\caption{Estructura de los 12 valores de cada medición.}
+\end{table}
+
+\section{El ``Por qué'' de las Cosas (Explicación Conceptual por Módulo)}
+
+\subsection{1. Simulador Serial (\texttt{2\_simulador\_serial/simulador\_serial.py})}
+
+\begin{itemize}[leftmargin=1.5em]
+    \item \textbf{¿Por qué se creó la función \texttt{variar\_valor} en vez de usar \texttt{randint} puro?}
+    Si en cada lectura se generara un número 100\% al azar entre $5$ y $30^\circ\text{C}$, la temperatura saltaría de $6^\circ\text{C}$ a $29^\circ\text{C}$ en medio segundo, lo cual se ve irreal. Guardando un diccionario \texttt{estado\_estaciones} para las 5 UMAs y sumando o restando una pequeña variación en cada paso (sin salirse nunca de los límites de la pauta), las curvas se mueven de forma suave como un sensor real.
+    
+    \item \textbf{¿Por qué al enviar por serial se escribe \texttt{(trama + "\textbackslash r\textbackslash n").encode("utf-8")}?}
+    Por dos motivos:
+    \begin{enumerate}
+        \item En Python 3 la librería \texttt{pyserial} transmite bytes crudos por el puerto COM, no cadenas \texttt{str}, por lo que \texttt{.encode("utf-8")} transforma el texto a bytes.
+        \item El salto de línea \texttt{\textbackslash r\textbackslash n} al final es fundamental porque en Lazarus el componente \texttt{TLazSerial} tiene activada la propiedad \texttt{RcvLineCRLF = True}, la cual espera hasta encontrar un salto de línea para entregar la trama completa sin cortarla a la mitad.
+    \end{enumerate}
+\end{itemize}
+
+\subsection{2. Interfaz Gráfica en Lazarus (\texttt{3\_lazarus\_datalogger/main.pas})}
+
+\begin{itemize}[leftmargin=1.5em]
+    \item \textbf{¿Cómo se lee y desarma la trama serial en \texttt{PuertoSerialRxData}?}
+    Cuando llega información al puerto \texttt{COM2}, se dispara automáticamente el evento \texttt{PuertoSerialRxData}. En vez de cortar el texto a mano buscando posiciones de comas, usamos un objeto \texttt{TStringList} (\texttt{elementos\_linea}) configurando \texttt{Delimiter := ','}. Eso separa automáticamente el texto en una lista de elementos. Luego verificamos que tenga exactamente 12 elementos (\texttt{Count = 12}) y los convertimos a entero de forma segura con \texttt{TryStrToInt}.
+    
+    \item \textbf{¿Cómo funciona el efecto \emph{Scrolling Left} (desplazamiento a la izquierda)?}
+    El gráfico de líneas muestra una ventana de 11 muestras en el eje horizontal (posiciones \texttt{0} a \texttt{10}):
+    \begin{enumerate}
+        \item Cuando llega un dato nuevo de una UMA, un ciclo \texttt{for j := 0 to 9} mueve cada valor antiguo un puesto hacia la izquierda: \texttt{historial\_mp1[uma, j] := historial\_mp1[uma, j + 1]}. El dato más viejo (posición \texttt{0}) sale del gráfico.
+        \item El dato recién llegado se guarda en la última posición de la derecha (\texttt{historial\_mp1[uma, 10]}).
+        \item Finalmente, \texttt{DibujarEstacionActual} limpia las series y vuelve a pintar los puntos del \texttt{0} al \texttt{10}, logrando que la curva se desplace continuamente de derecha a izquierda.
+    \end{enumerate}
+    
+    \item \textbf{¿Por qué los arreglos de historial tienen dos dimensiones \texttt{[1..5, 0..10]}?}
+    La primera dimensión (\texttt{1..5}) representa el número de estación UMA y la segunda (\texttt{0..10}) las 11 muestras en el tiempo. Así, aunque en pantalla estemos mirando la \texttt{UMA 1}, el programa sigue guardando en segundo plano los datos que llegan de las \texttt{UMA 2, 3, 4 y 5}. Cuando el usuario cambia el \texttt{RadioButton} a otra UMA, los gráficos no parten de cero ni se borran, sino que muestran de inmediato el historial acumulado de esa estación.
+    
+    \item \textbf{¿Cómo funcionan los RadioButtons \texttt{MP 01}, \texttt{MP 25} y \texttt{MP 10}?}
+    Los tres gráficos de línea están dibujados al mismo tiempo, pero si mostráramos los carteles con números (\texttt{Marks}) en las 3 curvas a la vez, se taparían entre sí. El procedimiento \texttt{ActualizarEtiquetasMP} activa \texttt{Marks.Visible := True} únicamente en la curva cuyo \texttt{RadioButton} está marcado.
+    
+    \item \textbf{¿Por qué se usa un \texttt{TBitmap} en caché (\texttt{bitmap\_fondo\_cache}) para el fondo del gráfico?}
+    El gráfico \texttt{Datos Ambientales} dibuja un paisaje de fondo mediante el evento \texttt{OnAfterDrawBackWall} (\texttt{DibujarFondoGrafico}). Si re-escaláramos el archivo \texttt{fondo\_grafico.jpg} cada vez que entra un dato serial, el procesador se saturaría y la ventana se sentiría lenta. Por eso, la primera vez que se dibuja (o solo si cambia el tamaño de la ventana), se escala una sola vez dentro de \texttt{bitmap\_fondo\_cache}, y en las lecturas siguientes se hace una copia directa desde memoria RAM (\texttt{ACanvas.Draw}), que toma menos de $0.1\,\text{ms}$.
+    
+    \item \textbf{¿Cómo envía Lazarus los datos al servidor Flask (\texttt{EnviarDatosFlask})?}
+    Usa las unidades nativas de Free Pascal \texttt{fpjson} y \texttt{fphttpclient}:
+    \begin{enumerate}
+        \item Crea un \texttt{TJSONObject} y agrega los 12 pares clave-valor (\texttt{'id\_uma'}, \texttt{'mp1\_0'}, etc.).
+        \item Crea un cliente \texttt{TFPHTTPClient}, agrega el encabezado \texttt{Content-Type: application/json} (indispensable para que Flask entienda que el cuerpo de la petición es un JSON) y envía el texto mediante \texttt{Post('http://127.0.0.1:7070/data')}.
+        \item Todo el envío está envuelto en un bloque \texttt{try..except}: si el servidor Flask está apagado o se reinicia, Lazarus captura el error sin congelarse ni cerrarse y solo avisa en la barra de estado inferior.
+    \end{enumerate}
+\end{itemize}
+
+\subsection{3. Servidor Flask, SQLite y Matplotlib (\texttt{1\_servidor\_flask/servidor.py})}
+
+\begin{itemize}[leftmargin=1.5em]
+    \item \textbf{¿Cómo se guarda el registro con \texttt{DateTime} en SQLite?}
+    Al arrancar el servidor, \texttt{inicializar\_bd()} crea automáticamente el archivo \texttt{datos\_ambientales.db} y la tabla \texttt{mediciones}. Cada vez que llega una petición \texttt{POST} a \texttt{/data}, el servidor toma la hora exacta del sistema con \texttt{datetime.now().strftime("\%Y-\%m-\%d \%H:\%M:\%S")} y ejecuta un \texttt{INSERT INTO mediciones} guardando la fecha/hora junto con los 12 valores ambientales.
+    
+    \item \textbf{¿Por qué se ejecuta \texttt{PRAGMA journal\_mode=WAL;} al abrir SQLite?}
+    \texttt{WAL} (\emph{Write-Ahead Logging}) permite que SQLite reciba escrituras desde Lazarus (\texttt{POST /data}) al mismo tiempo que el navegador realiza lecturas (\texttt{GET /data} o \texttt{GET /grafico.png}) sin bloquear la base de datos.
+    
+    \item \textbf{¿Por qué se usa \texttt{conexion.row\_factory = sqlite3.Row}?}
+    Por defecto, SQLite en Python devuelve tuplas sin nombre \texttt{(1, '2026-11-06...', 45, ...)}. Al usar \texttt{sqlite3.Row}, cada fila se puede convertir directamente en un diccionario con \texttt{dict(fila)} y transformarse en respuesta JSON con \texttt{jsonify(...)}.
+    
+    \item \textbf{¿Cómo se genera el gráfico de Matplotlib de 3 Subplots (\texttt{generar\_grafico})?}
+    \begin{enumerate}
+        \item Al inicio del archivo se declara \texttt{matplotlib.use('Agg')}. Esto activa el motor sin interfaz gráfica de Matplotlib para que genere archivos PNG en el servidor sin intentar abrir ventanas emergentes de escritorio.
+        \item Se consultan en SQLite las últimas 20 mediciones (\texttt{ORDER BY id DESC LIMIT 20}) y se invierte la lista (\texttt{registros.reverse()}) para que en el eje horizontal el tiempo avance de más antiguo (izquierda) a más reciente (derecha).
+        \item Se divide la figura en 3 filas (\texttt{plt.subplot(3, 1, 1)}, \texttt{(3, 1, 2)} y \texttt{(3, 1, 3)}):
+        \begin{itemize}
+            \item \textbf{Subplot 1:} Grafica con \texttt{plt.plot} las 3 curvas históricas de \texttt{MP 1.0}, \texttt{MP 2.5} y \texttt{MP 10}.
+            \item \textbf{Subplot 2:} Toma la medición más reciente (\texttt{registros[-1]}) y dibuja con \texttt{plt.bar} el histograma de 6 barras de colores para los diámetros $0.3\,\mu\text{m}$ a $10.0\,\mu\text{m}$, colocando el valor sobre cada barra con \texttt{plt.text}.
+            \item \textbf{Subplot 3:} Grafica con \texttt{plt.plot} la evolución histórica de Temperatura ($^\circ\text{C}$) y Humedad Relativa ($\%$).
+        \end{itemize}
+        \item Guarda la imagen en \texttt{1\_servidor\_flask/static/grafico.png}, cierra la figura con \texttt{plt.close(fig)} para liberar memoria RAM y la ruta \texttt{/grafico.png} la entrega al navegador con \texttt{send\_file}.
+    \end{enumerate}
+\end{itemize}
+
+\newpage
+\section{Mapa Rápido para la Defensa: ¿Dónde está cada cosa?}
+
+Si durante la presentación el profesor te pide mostrar una parte específica del código, usa esta tabla para ir directo al archivo y función correspondiente:
+
+\begin{table}[h!]
+\centering
+\small
+\begin{tabular}{@{}p{5.8cm}p{4.6cm}p{5.2cm}@{}}
+\toprule
+\textbf{Si el profesor pregunta o pide ver...} & \textbf{Archivo} & \textbf{Función / Procedimiento y Líneas} \\ \midrule
+1. ¿Dónde se genera la trama aleatoria de 12 datos en Python? & \texttt{2\_simulador\_serial/\newline simulador\_serial.py} & Función \texttt{generar\_trama(id\_uma)} (líneas 35--60). \\ \addlinespace
+2. ¿Dónde se abre el puerto \texttt{COM2} y se envía por serial en Python? & \texttt{2\_simulador\_serial/\newline simulador\_serial.py} & Bloque \texttt{if \_\_name\_\_ == "\_\_main\_\_":} (líneas 63--88). \\ \addlinespace
+3. ¿Dónde se conecta o desconecta el puerto \texttt{COM2} en Lazarus? & \texttt{3\_lazarus\_datalogger/\newline main.pas} & Procedimiento \texttt{ChkConectarSerialChange} (líneas 241--267). \\ \addlinespace
+4. ¿Dónde recibe Lazarus la trama del puerto serial y separa las comas? & \texttt{3\_lazarus\_datalogger/\newline main.pas} & Procedimiento \texttt{PuertoSerialRxData} (líneas 380--430). \\ \addlinespace
+5. ¿Dónde se hace el \emph{Scrolling Left} (correr los datos a la izquierda)? & \texttt{3\_lazarus\_datalogger/\newline main.pas} & Dentro de \texttt{PuertoSerialRxData} (líneas 447--458) y dibujo en \texttt{DibujarEstacionActual} (líneas 312--335). \\ \addlinespace
+6. ¿Dónde se activan/desactivan los carteles numéricos \texttt{MP 01/25/10}? & \texttt{3\_lazarus\_datalogger/\newline main.pas} & Procedimientos \texttt{ActualizarEtiquetasMP} y \texttt{CambiarEtiquetasMP} (líneas 279--295). \\ \addlinespace
+7. ¿Dónde arma Lazarus el JSON y hace el \texttt{POST} con \texttt{TFPHTTPClient}? & \texttt{3\_lazarus\_datalogger/\newline main.pas} & Procedimiento \texttt{EnviarDatosFlask} (líneas 345--377). \\ \addlinespace
+8. ¿Dónde se guardan las capturas PNG de los gráficos de Lazarus? & \texttt{3\_lazarus\_datalogger/\newline main.pas} & \texttt{BtnGuardarSeriesClick} y \texttt{BtnGuardarHistoClick} (líneas 485--517). \\ \addlinespace
+9. ¿Dónde se crea la base de datos SQLite y la tabla \texttt{mediciones}? & \texttt{1\_servidor\_flask/\newline servidor.py} & Función \texttt{inicializar\_bd()} (líneas 28--52). \\ \addlinespace
+10. ¿Dónde recibe Flask el JSON, le agrega \texttt{DateTime} y hace el \texttt{INSERT}? & \texttt{1\_servidor\_flask/\newline servidor.py} & Función \texttt{manejar\_data()} en el bloque \texttt{if request.method == 'POST':} (líneas 151--196). \\ \addlinespace
+11. ¿Dónde están los endpoints de la API REST que devuelven JSON al navegador? & \texttt{1\_servidor\_flask/\newline servidor.py} & \texttt{GET /data} (líneas 198--221),\newline \texttt{GET /data/ultimo} (líneas 224--247),\newline \texttt{GET /data/uma/<id>} (líneas 250--264). \\ \addlinespace
+12. ¿Dónde se crea el gráfico Matplotlib de 3 Subplots? & \texttt{1\_servidor\_flask/\newline servidor.py} & Función \texttt{generar\_grafico()} (líneas 55--148) y ruta \texttt{/grafico.png} (líneas 267--272). \\ \bottomrule
+\end{tabular}
+\caption{Guía rápida de ubicación en el código para preguntas de la defensa.}
+\end{table}
+
+\section{Orden Exacto para Iniciar el Proyecto en la Defensa}
+
+\begin{enumerate}[leftmargin=1.5em]
+    \item \textbf{Abrir VSPE:} Crear (o cargar) el dispositivo \textbf{\texttt{Connector}} en el puerto \textbf{\texttt{COM2}} y darle al botón \textbf{Play} (\emph{Start Emulation}).
+    \item \textbf{Abrir Lazarus IDE:} Abrir \texttt{3\_lazarus\_datalogger/datalogger.lpi}, presionar \textbf{F9} para ejecutar la ventana, y marcar arriba las casillas \textbf{\texttt{COM On/Off}} y \textbf{\texttt{Envía a Flask}}.
+    \item \textbf{Terminal 1 (Servidor Flask):}
+    \begin{verbatim}
+    cd 1_servidor_flask
+    python servidor.py
+    \end{verbatim}
+    \item \textbf{Terminal 2 (Simulador Serial):}
+    \begin{verbatim}
+    cd 2_simulador_serial
+    python simulador_serial.py
+    \end{verbatim}
+    \item \textbf{Navegador Web:}
+    \begin{itemize}
+        \item Panel principal y gráfica Matplotlib (3 Subplots): \url{http://127.0.0.1:7070/}
+        \item Consultas JSON en el navegador: \url{http://127.0.0.1:7070/data}, \url{http://127.0.0.1:7070/data/ultimo} y \url{http://127.0.0.1:7070/data/uma/1}
+    \end{itemize}
+\end{enumerate}
+
+\end{document}

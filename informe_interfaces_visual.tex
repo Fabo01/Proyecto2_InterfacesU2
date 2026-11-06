@@ -1,0 +1,185 @@
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[spanish,es-tabla]{babel}
+\usepackage[margin=2.3cm]{geometry}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usepackage{enumitem}
+
+\definecolor{azuluct}{RGB}{20, 65, 130}
+\definecolor{verdeuct}{RGB}{16, 125, 90}
+
+\hypersetup{
+    colorlinks=true,
+    linkcolor=azuluct,
+    urlcolor=azuluct,
+    pdftitle={Guia Visual de Interfaces - Como se Pinta el Proyecto 2},
+    pdfauthor={Fabian Garcia}
+}
+
+\setlength{\parskip}{0.55em}
+\setlength{\parindent}{0pt}
+
+\title{\textbf{\textcolor{azuluct}{Guía Visual: ¿Cómo se ``Pinta'' y Controla la Interfaz?}}\\
+\Large Enfoque práctico para el ramo de Interfaces Gráficas (INFO1128)\\
+\normalsize Proyecto \#2 (Unidad II) --- Lazarus \texttt{TAChart} + Matplotlib + Web}
+\author{Fabián García}
+\date{Noviembre 2026}
+
+\begin{document}
+
+\maketitle
+\tableofcontents
+\vspace{1em}
+\hrule
+\vspace{1em}
+
+\section{La Idea Clave del Ramo: ``Cerebros Prestados'' vs.\ ``Pintar en Pantalla''}
+
+En este proyecto, las partes de comunicación y datos (``los cerebros'') vienen prácticamente dadas en las guías y demos del profesor:
+\begin{itemize}[leftmargin=1.5em]
+    \item \textbf{Simulador Serial (\texttt{Simu\_Trama}):} Crear 12 números al azar con \texttt{randint}, unirlos con comas y mandarlos por \texttt{COM2}.
+    \item \textbf{Lectura Serial y Envío HTTP (\texttt{MySerRxData} y \texttt{Send\_Data\_To\_Flask}):} Recibir el texto en Lazarus, separar los 12 números y mandarlos como JSON con \texttt{TFPHTTPClient} a \texttt{http://127.0.0.1:7070/data}.
+    \item \textbf{Servidor Flask + SQLite:} Recibir el JSON en \texttt{/data} y guardarlo en una tabla con \texttt{INSERT}.
+\end{itemize}
+
+Por lo tanto, el verdadero corazón de \textbf{Interfaces Gráficas} está en entender \textbf{cómo se dibuja (``pinta'') la información en pantalla}, cómo se logra la sensación de movimiento en los gráficos y cómo responden los botones y selectores visuales tanto en \textbf{Lazarus} como en \textbf{Matplotlib / Navegador}.
+
+\section{¿Cómo se ``Pinta'' la Ventana de Lazarus? (\texttt{main.lfm} y \texttt{main.pas})}
+
+En Lazarus, nada cambia en pantalla por arte de magia: cada vez que llega una trama por el puerto serial, nosotros debemos \textbf{borrar el lienzo de las series y volver a pintar los puntos y barras con los valores nuevos}.
+
+\subsection{1. Los dos ``Lienzos'' de Dibujo (\texttt{TChart})}
+En la ventana hay dos componentes \texttt{TChart}:
+\begin{enumerate}[leftmargin=1.5em]
+    \item \textbf{\texttt{GraficoSeries} (a la izquierda):} Es el lienzo donde viven las \textbf{3 curvas de líneas} (\texttt{SerieMP1}, \texttt{SerieMP25} y \texttt{SerieMP10}, que son objetos \texttt{TLineSeries}).
+    \item \textbf{\texttt{GraficoHistograma} (a la derecha):} Es el lienzo donde vive la \textbf{serie de barras} (\texttt{SerieBarras}, que es un objeto \texttt{TBarSeries}).
+\end{enumerate}
+
+\textbf{Detalle visual clave --- ¿Por qué fijamos \texttt{Extent.YMin} y \texttt{Extent.YMax} en \texttt{FormCreate}?}\\
+Por defecto, un \texttt{TChart} auto-ajusta su altura según los puntos que tenga. Si todos los puntos valen \texttt{0} al inicio, el gráfico pone el \texttt{0} flotando en la mitad de la pantalla (entre $-1$ y $+1$). Al fijar en \texttt{FormCreate}:
+\begin{itemize}
+    \item \texttt{GraficoSeries.Extent.YMin := 0} y \texttt{YMax := 110}
+    \item \texttt{GraficoHistograma.Extent.YMin := 0} y \texttt{YMax := 11200}
+\end{itemize}
+obligamos al lienzo a tener un ``piso'' fijo en \texttt{0} y un ``techo'' fijo arriba, igual que un instrumento de medición real.
+
+\subsection{2. ¿Cómo se pinta la animación de las 3 curvas (\emph{Scrolling Left})?}
+Un gráfico en Lazarus no se mueve solo como un video. Para que las curvas parezcan avanzar hacia la izquierda:
+\begin{enumerate}[leftmargin=1.5em]
+    \item Tenemos 11 posiciones fijas en el eje X: los números del \texttt{0} al \texttt{10}.
+    \item Cada vez que llega un dato nuevo de la estación (por ejemplo, \texttt{UMA 1}), corremos los valores guardados un casillero a la izquierda (\texttt{posicion[0] := posicion[1]}, \dots, \texttt{posicion[9] := posicion[10]}) y metemos el número recién llegado en el casillero \texttt{10} (el extremo derecho).
+    \item Luego vamos a \texttt{DibujarEstacionActual}:
+    \begin{itemize}
+        \item Borramos el dibujo anterior con \texttt{SerieMP1.Clear}, \texttt{SerieMP25.Clear} y \texttt{SerieMP10.Clear}.
+        \item Con un ciclo \texttt{for i := 0 to 10}, pintamos los 11 puntos de nuevo usando \textbf{\texttt{SerieMP1.AddXY(i, valor)}}.
+    \end{itemize}
+    \item Como los gráficos tienen activado \texttt{DoubleBuffered = True} (que arma el dibujo completo en memoria antes de mostrarlo en el monitor), el borrado y repintado no parpadea y el ojo humano ve que la línea camina suavemente hacia la izquierda.
+\end{enumerate}
+
+\subsection{3. ¿Cómo se pintan las 6 barras de distintos colores en el Histograma?}
+A diferencia de las curvas (donde toda la línea tiene un solo color), en el histograma queremos que cada una de las 6 barras tenga un color distinto y diga abajo su diámetro (\texttt{0.3um}, \texttt{0.5um}, \dots, \texttt{10um}):
+\begin{enumerate}[leftmargin=1.5em]
+    \item En \texttt{FormCreate} guardamos dos arreglos: \texttt{etiquetas\_diametros[0..5]} con los 6 textos y \texttt{colores\_barras[0..5]} con los 6 colores.
+    \item Además le decimos al eje inferior del gráfico que tome sus textos desde la serie de barras:
+    \begin{center}
+    \texttt{GraficoHistograma.BottomAxis.Marks.Source := SerieBarras.ListSource;}\\
+    \texttt{GraficoHistograma.BottomAxis.Marks.Style := smsLabel;}
+    \end{center}
+    \item Luego, en \texttt{DibujarEstacionActual}, borramos las barras anteriores (\texttt{SerieBarras.Clear}) y con un ciclo de \texttt{0} a \texttt{5} pintamos cada barra pasándole los 4 datos de una sola vez:
+    \begin{center}
+    \textbf{\texttt{SerieBarras.AddXY(i, valor\_particulas, etiquetas\_diametros[i], colores\_barras[i]);}}
+    \end{center}
+\end{enumerate}
+
+\subsection{4. ¿Cómo se pintan los carteles con números (\texttt{Marks}) sobre las curvas y barras?}
+En \texttt{TAChart}, toda serie tiene una propiedad llamada \textbf{\texttt{Marks}} (los cartelitos que flotan sobre cada punto o barra mostrando su valor):
+\begin{itemize}[leftmargin=1.5em]
+    \item \textbf{Color del cartel:} En \texttt{FormCreate} pintamos el relleno del cartel (\texttt{Marks.LabelBrush.Color}) de color \textbf{rojo} con letra \textbf{blanca} para las 3 curvas de línea, y de color \textbf{amarillo} con letra \textbf{negra} para las barras del histograma (imitando exactamente las fotos de la pauta del profesor).
+    \item \textbf{¿Por qué existen los RadioButtons \texttt{MP 01}, \texttt{MP 25} y \texttt{MP 10}?}
+    Si prendiéramos los carteles de las 3 curvas al mismo tiempo, habría 33 cuadros rojos chocando en pantalla. Por eso, cuando haces clic en \texttt{MP 01}, \texttt{MP 25} o \texttt{MP 10}, se ejecuta \texttt{ActualizarEtiquetasMP}, que simplemente prende \texttt{Marks.Visible := True} en la curva elegida y apaga (\texttt{False}) las otras dos:
+    \begin{center}
+    \texttt{SerieMP1.Marks.Visible := mostrar and RbVerMP1.Checked;}\\
+    \texttt{SerieMP25.Marks.Visible := mostrar and RbVerMP25.Checked;}\\
+    \texttt{SerieMP10.Marks.Visible := mostrar and RbVerMP10.Checked;}
+    \end{center}
+\end{itemize}
+
+\subsection{5. ¿Cómo se pinta el paisaje de fondo dentro del gráfico sin poner lenta la ventana?}
+El componente \texttt{TChart} dibuja sus elementos por capas (igual que Photoshop):
+\begin{center}
+\textbf{Capa 1:} Fondo del recuadro (\texttt{BackWall}) $\rightarrow$ \textbf{Capa 2:} Grilla y Ejes $\rightarrow$ \textbf{Capa 3:} Curvas y Carteles.
+\end{center}
+Nosotros enganchamos el procedimiento \textbf{\texttt{DibujarFondoGrafico}} justo al terminar la Capa 1 (evento \texttt{OnAfterDrawBackWall}):
+\begin{itemize}[leftmargin=1.5em]
+    \item Cargamos el archivo \texttt{fondo\_grafico.jpg} al abrir el programa.
+    \item Para que Windows no tenga que estirar el archivo JPG en cada lectura serial (lo que ponía lenta la ventana), la primera vez lo estiramos dentro de una imagen en memoria RAM (\texttt{bitmap\_fondo\_cache}) del tamaño exacto del gráfico.
+    \item En cada redibujado, solo estampamos esa imagen lista con \textbf{\texttt{ACanvas.Draw(ARect.Left, ARect.Top, bitmap\_fondo\_cache)}}, y encima Lazarus pinta la grilla y las 3 curvas.
+\end{itemize}
+
+\subsection{6. El resto de la Interfaz en Lazarus: Textos, Reloj y Capturas}
+\begin{itemize}[leftmargin=1.5em]
+    \item \textbf{Temperatura y Humedad (\texttt{LblTemperatura} y \texttt{LblHumedad}):} Son dos \texttt{TLabel} con fuente tamaño 42 en negrita dentro de recuadros blancos. Se actualizan cambiando su propiedad \texttt{.Caption}.
+    \item \textbf{Reloj en vivo (\texttt{RelojTimer} y \texttt{BarraEstado}):} Igual que en el Tutorial \#1 del ramo, un componente \texttt{TTimer} con \texttt{Interval = 1000} (1 segundo) ejecuta \texttt{RelojTimerTimer} y actualiza el texto del primer panel de la barra inferior (\texttt{BarraEstado.Panels[0].Text}) con la fecha y hora actual, mientras el segundo panel (\texttt{Panels[1].Text}) muestra la última trama recibida.
+    \item \textbf{Botones para Guardar Foto (\texttt{BtnGuardarSeries} y \texttt{BtnGuardarHisto}):} Usan el método propio de \texttt{TChart}:
+    \begin{center}
+    \texttt{GraficoSeries.SaveToFile(TPortableNetworkGraphic, ruta\_archivo);}
+    \end{center}
+    que toma una captura exacta de lo que está pintado en ese gráfico y lo guarda como \texttt{.png} en la carpeta \texttt{capturas/}.
+\end{itemize}
+
+\newpage
+\section{¿Cómo se ``Pinta'' en el Navegador Web? (\texttt{servidor.py} e \texttt{index.html})}
+
+En el lado de Python, el profesor pide dos visualizaciones en el navegador: \textbf{ver una gráfica generada por Matplotlib} y \textbf{ver las consultas en formato JSON}.
+
+\subsection{1. Cómo pinta Matplotlib los 3 Subplots (\texttt{generar\_grafico} en \texttt{servidor.py})}
+Sigue exactamente la misma receta del \texttt{Make\_Plot} que el profesor enseñó en el \textbf{Tutorial \#2}:
+\begin{enumerate}[leftmargin=1.5em]
+    \item \textbf{Modo silencioso (\texttt{matplotlib.use('Agg')}):} Como Flask es un servidor web, no queremos que Matplotlib abra una ventana suelta en Windows cada vez que alguien entra a la página. \texttt{'Agg'} hace que Matplotlib pinte en memoria y guarde directo a un archivo \texttt{.png}.
+    \item \textbf{Hoja de dibujo y estilo:} Se aplica el estilo \texttt{plt.style.use('bmh')} (que pone fondo gris suave con grilla blanca punteada) y se crea una hoja de $11 \times 9$ pulgadas con \texttt{plt.figure(figsize=(11, 9))}.
+    \item \textbf{División en 3 pisos (\texttt{plt.subplot(filas, columnas, posicion)}):}
+    \begin{itemize}
+        \item \textbf{Piso 1 --- \texttt{plt.subplot(3, 1, 1)} (3 filas, 1 columna, piso 1):} Pinta las 3 curvas históricas de \texttt{MP 1.0}, \texttt{MP 2.5} y \texttt{MP 10} usando tres llamadas a \texttt{plt.plot(...)}, agregando marcadores (\texttt{'o'}, \texttt{'s'}, \texttt{'\textasciicircum'}) y el cuadro de leyenda (\texttt{plt.legend()}).
+        \item \textbf{Piso 2 --- \texttt{plt.subplot(3, 1, 2)} (piso del medio):} Toma la última medición guardada y pinta las 6 barras del histograma con \texttt{plt.bar(tamanos, conteos, color=colores)}. Luego recorre cada barra con un \texttt{for} y usa \texttt{plt.text(...)} para escribir el número de partículas justo arriba de cada columna.
+        \item \textbf{Piso 3 --- \texttt{plt.subplot(3, 1, 3)} (piso inferior):} Pinta con \texttt{plt.plot(...)} las dos curvas históricas de Temperatura ($^\circ\text{C}$) y Humedad ($\%$).
+    \end{itemize}
+    \item \textbf{Guardado y entrega al navegador:} \texttt{plt.tight\_layout()} ordena los márgenes para que no choquen los títulos, \texttt{plt.savefig("static/grafico.png")} guarda la foto en disco, y la ruta \texttt{@app.route("/grafico.png")} se la manda al navegador con \texttt{send\_file(...)}.
+\end{enumerate}
+
+\subsection{2. Cómo se pinta la Página Web (\texttt{templates/index.html})}
+Cuando entras a \texttt{http://127.0.0.1:7070/}, Flask ejecuta \texttt{pagina\_principal()}, busca en SQLite el último registro guardado y se lo pasa a la plantilla \texttt{index.html}, que pinta 4 bloques:
+\begin{enumerate}[leftmargin=1.5em]
+    \item \textbf{Barra superior de botones (\texttt{Todas las UMA}, \texttt{UMA 1} \dots \texttt{UMA 5}):} Son enlaces simples (\texttt{/?uma=1}, \texttt{/?uma=2}, etc.). Al hacer clic, recargan la página filtrando tanto las tarjetas como el gráfico de Matplotlib para esa estación.
+    \item \textbf{Tarjetas de resumen:} Muestran en números grandes los valores recién leídos (\texttt{\{\{ ultimo.mp1\_0 \}\}}, \texttt{\{\{ ultimo.temperatura \}\}}, etc.).
+    \item \textbf{La imagen del gráfico Matplotlib:} Una etiqueta \texttt{<img src="/grafico.png?uma=...">} que le pide a Flask la imagen PNG recién pintada por Matplotlib.
+    \item \textbf{Botones de Consultas JSON:} Enlaces directos que abren en otra pestaña las rutas \texttt{/data}, \texttt{/data/ultimo} y \texttt{/data/uma/1..5} para mostrar el JSON crudo en el navegador tal como pide la pauta.
+\end{enumerate}
+
+\section{Resumen Rápido de Componentes Visuales (Para responder al instante)}
+
+\begin{table}[h!]
+\centering
+\small
+\begin{tabular}{@{}lll@{}}
+\toprule
+\textbf{Elemento en Pantalla} & \textbf{Componente / Función usada} & \textbf{Propiedad o Método que lo ``Pinta''} \\ \midrule
+Gráfico izquierdo (Lazarus) & \texttt{GraficoSeries: TChart} & \texttt{BackColor}, \texttt{Extent.YMin / YMax} \\
+3 Curvas de MP (Lazarus) & \texttt{SerieMP1..10: TLineSeries} & \texttt{.Clear} y \texttt{.AddXY(x, y)} en ciclo \texttt{0..10} \\
+Carteles rojos en curvas & \texttt{SerieMP.Marks} & \texttt{Marks.Visible := RbVerMP.Checked} \\
+Gráfico derecho (Lazarus) & \texttt{GraficoHistograma: TChart} & \texttt{BottomAxis.Marks.Style := smsLabel} \\
+6 Barras de colores (Lazarus) & \texttt{SerieBarras: TBarSeries} & \texttt{.AddXY(i, valor, texto, color)} \\
+Paisaje dentro del gráfico & Evento \texttt{OnAfterDrawBackWall} & \texttt{ACanvas.Draw(..., bitmap\_fondo\_cache)} \\
+Números grandes Temp / Hum & \texttt{LblTemperatura / LblHumedad} & \texttt{.Caption := IntToStr(...)} \\
+Reloj inferior en vivo & \texttt{RelojTimer: TTimer} + \texttt{TStatusBar} & \texttt{BarraEstado.Panels[0].Text} cada $1000\,\text{ms}$ \\
+Guardar foto del gráfico & \texttt{BtnGuardarSeries / Histo} & \texttt{Grafico.SaveToFile(TPortableNetworkGraphic, ...)} \\
+Gráfico Web (3 Subplots) & \texttt{matplotlib.pyplot} (\texttt{servidor.py}) & \texttt{plt.subplot(3,1,1..3)}, \texttt{plt.plot}, \texttt{plt.bar}, \texttt{savefig} \\ \bottomrule
+\end{tabular}
+\caption{Diccionario rápido de componentes gráficos del proyecto.}
+\end{table}
+
+\end{document}
